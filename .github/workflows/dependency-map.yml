@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   compare:
@@ -35,7 +36,7 @@ jobs:
       - name: Build pdm
         working-directory: current
         run: |
-          pnpm install --no-frozen-lockfile
+          pnpm install --frozen-lockfile
           pnpm build
 
       - name: Compare dependency maps
@@ -47,3 +48,34 @@ jobs:
           echo '```mermaid' >> "$GITHUB_STEP_SUMMARY"
           cat dependency-diff.mmd >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Update dependency diff comment
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- project-dependency-map -->';
+            const diff = require('node:fs').readFileSync('dependency-diff.mmd', 'utf8');
+            const body = `${marker}\n## Dependency map changes\n\n\`\`\`mermaid\n${diff}\n\`\`\``;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const existing = comments.find(
+              (comment) => comment.user.type === 'Bot' && comment.body?.includes(marker),
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
