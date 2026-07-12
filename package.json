@@ -1,0 +1,24 @@
+{
+  "name": "project-dependency-map",
+  "version": "0.1.0",
+  "description": "Static directory dependency maps for TypeScript and JavaScript projects",
+  "type": "module",
+  "packageManager": "pnpm@11.10.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "bin": { "pdm": "./dist/cli.js" },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "test": "pnpm run build && node --test test/*.test.js"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": { "@types/node": "^20.0.0", "typescript": "^5.0.0" }
+}

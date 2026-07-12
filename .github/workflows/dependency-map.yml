@@ -1,0 +1,49 @@
+name: Dependency map
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout pull request
+        uses: actions/checkout@v7
+        with:
+          path: current
+
+      - name: Checkout base revision
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: before
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.10.0
+
+      - name: Build pdm
+        working-directory: current
+        run: |
+          pnpm install --no-frozen-lockfile
+          pnpm build
+
+      - name: Compare dependency maps
+        run: node current/dist/cli.js compare before current --format mermaid --output dependency-diff.mmd
+
+      - name: Add dependency diff to job summary
+        run: |
+          echo '## Dependency map changes' >> "$GITHUB_STEP_SUMMARY"
+          echo '```mermaid' >> "$GITHUB_STEP_SUMMARY"
+          cat dependency-diff.mmd >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
